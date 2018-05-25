@@ -5,7 +5,10 @@
 .bar { fill: #b85d93; }
 .positivebar{fill: #b85d93;}
 .negativebar{fill: #85b761;}
-
+.legend{
+    font-size: 18px;
+    font-weight: 700;
+}
 </style>
 <body>
 	
@@ -24,10 +27,7 @@ var x = d3.scaleBand()
           .padding(0.3);
 var y = d3.scaleLinear()
           .range([height, 0]);
-
-var bisectDate = d3.bisector(function(d) {
-    return d.age;
-}).left;          
+      
 // append the svg object to the body of the page
 // append a 'group' element to 'svg'
 // moves the 'group' element to the top left margin
@@ -103,7 +103,7 @@ var drag = d3.drag()
                  .attr("y1",-20)
                  .attr("x2",x2New)
                  .attr("y2",height);
-                 var xy = d3.mouse(this)[0];
+                var xy = d3.mouse(this)[0];
                 var x0 = x.invert(xy);
                                 
                 d3.selectAll('.bar').attr('class',function(){
@@ -112,7 +112,30 @@ var drag = d3.drag()
                     }else{
                         return 'negativebar bar';
                     }
-                })
+                })   
+                var uC = 0;
+                var dC = 0;
+                data.forEach(function(d){
+                    if(d.age < x0){
+                        uC += d.total;
+                    }else{
+                        dC +=d.total;
+                    }
+                })             
+
+                var tmp_uc_txt = uC + ' people ' + ' younger than ' + x0;
+                var tmp_dc_txt = dC + ' people ' + ' older than ' + x0;
+                d3.select('#utext').attr('x',function(){
+                    if(x1New<100)
+                    return x1New + 20;
+                    return x1New - 70
+                }).attr('y',function(){
+                    if(x1New<100)
+                    return (height/2 - 100);
+                    return (height/2);
+                }).text(tmp_uc_txt).call(wrap,50);
+                d3.select('#dtext').attr('x',x1New + 10).text(tmp_dc_txt).call(wrap,50);
+                
              }).on('end', function(){
            }); 
 
@@ -124,8 +147,21 @@ var line = svg.append("line")
               .attr("stroke-width",5)
               .attr("stroke","black")
               .call(drag);
+var utext = svg.append("text")
+    .attr("x", 0)
+    .attr("y", height/2)
+    .attr('id',"utext")
+    .attr('class','legend')
+    .attr("dy", ".35em")
+    .text('').call(wrap,100);
+var dtext = svg.append("text")
+    .attr("x", 200)
+    .attr("y", height/2)
+    .attr('class','legend')
+    .attr('id',"dtext")
+    .attr("dy", ".35em")
+    .text('').call(wrap,100);
 });
-
 //function to get size of object
 Object.size = function(obj) {
     var size = 0, key;
@@ -146,6 +182,31 @@ function changeDataFormat(data){
         result.push(tmp);
     }
     return result;
+}
+
+function wrap(text, width) {
+    text.each(function() {
+        var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.1, // ems
+            y = text.attr("y"),
+            x = text.attr('x'),
+            dy = parseFloat(text.attr("dy")),
+            tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+        while (word = words.pop()) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+                line.pop();
+                tspan.text(line.join(" "));
+                line = [word];
+                tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+            }
+        }
+    });
 }
 </script>
 </body>
