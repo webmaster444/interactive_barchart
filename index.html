@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+.bar { fill: #b85d93; }
+.positivebar{fill: #b85d93;}
+.negativebar{fill: #85b761;}
+
+</style>
+<body>
+	
+<!-- load the d3.js library -->    	
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script>
+
+// set the dimensions and margins of the graph
+var margin = {top: 50, right: 20, bottom: 30, left: 40},
+    width = 1600 - margin.left - margin.right,
+    height = 800 - margin.top - margin.bottom;
+
+// set the ranges
+var x = d3.scaleBand()
+          .range([0, width])
+          .padding(0.3);
+var y = d3.scaleLinear()
+          .range([height, 0]);
+          
+// append the svg object to the body of the page
+// append a 'group' element to 'svg'
+// moves the 'group' element to the top left margin
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", 
+          "translate(" + margin.left + "," + margin.top + ")");
+
+// get the data
+// d3.csv("sales.csv", function(error, data) {
+    // console.log(data);
+d3.json("twocities.json", function(error, data) {
+    var data = changeDataFormat(data['data']['Gravenbrakel']);
+  if (error) throw error;    
+  // format the data
+  data.forEach(function(d) {
+    d.total = +d.total;
+  });
+
+  // Scale the range of the data in the domains
+  x.domain(data.map(function(d) { return d.age; }));
+  y.domain([0, d3.max(data, function(d) { return d.total; })]);
+
+  // append the rectangles for the bar chart
+  svg.selectAll(".bar")
+      .data(data)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function(d) { return x(d.age); })
+      .attr("width", x.bandwidth())
+      .attr("y", function(d) { return y(d.total); })
+      .attr("height", function(d) { return height - y(d.total); });
+
+  var siFormat = function(d){
+      if(d=='0')
+        return '<1';
+        if(d%25 ==0)
+            return d;
+            else "";
+  }
+  // add the x Axis
+  svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x).tickFormat(siFormat));
+
+  // add the y Axis
+  svg.append("g")
+      .call(d3.axisLeft(y));
+
+var drag = d3.drag()
+           .on('start', null)
+           .on('drag', function(d){
+             // move circle
+             var dx = d3.event.dx;
+             var dy = d3.event.dy;
+             var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
+             var y1New = parseFloat(d3.select(this).attr('y1'))+ dy;
+             var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
+             var y2New = parseFloat(d3.select(this).attr('y2'))+ dy;
+             line.attr("x1",x1New)
+                 .attr("y1",-20)
+                 .attr("x2",x2New)
+                 .attr("y2",height);
+             }).on('end', function(){
+           }); 
+
+var line = svg.append("line")
+              .attr("x1",x(0))
+              .attr("y1",- 20)
+              .attr("x2",x(0))
+              .attr("y2",height)
+              .attr("stroke-width",5)
+              .attr("stroke","black")
+              .call(drag);
+});
+
+//function to get size of object
+Object.size = function(obj) {
+    var size = 0, key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) size++;
+    }
+    return size;
+};
+
+function changeDataFormat(data){
+    var result = [];
+    var size = Object.size(data);
+    for(var i=0;i<size;i++){        
+        var key = Object.keys(data)[i];        
+        var tmp = new Object;
+        tmp['age'] = key;        
+        tmp['total'] = data[key]["T"];
+        result.push(tmp);
+    }
+    return result;
+}
+</script>
+</body>
