@@ -24,7 +24,10 @@ var x = d3.scaleBand()
           .padding(0.3);
 var y = d3.scaleLinear()
           .range([height, 0]);
-          
+
+var bisectDate = d3.bisector(function(d) {
+    return d.age;
+}).left;          
 // append the svg object to the body of the page
 // append a 'group' element to 'svg'
 // moves the 'group' element to the top left margin
@@ -76,6 +79,16 @@ d3.json("twocities.json", function(error, data) {
   svg.append("g")
       .call(d3.axisLeft(y));
 
+// custom invert function
+x.invert = (function() {
+    var domain = x.domain()
+    var range = x.range()
+    var scale = d3.scaleQuantize().domain(range).range(domain)
+    return function(x3) {
+        return scale(x3)
+    }
+})();
+
 var drag = d3.drag()
            .on('start', null)
            .on('drag', function(d){
@@ -90,6 +103,16 @@ var drag = d3.drag()
                  .attr("y1",-20)
                  .attr("x2",x2New)
                  .attr("y2",height);
+                 var xy = d3.mouse(this)[0];
+                var x0 = x.invert(xy);
+                                
+                d3.selectAll('.bar').attr('class',function(){
+                    if(d3.select(this).attr('x') > x(x0)){
+                        return 'positivebar bar';
+                    }else{
+                        return 'negativebar bar';
+                    }
+                })
              }).on('end', function(){
            }); 
 
