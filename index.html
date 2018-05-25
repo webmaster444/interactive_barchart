@@ -13,6 +13,16 @@
 text{
     font-family: 'Source Sans Pro', sans-serif;
 }
+path.domain{
+    display: none;
+}
+.xgridwrapper line{
+    display: none;
+}
+
+/* .xgridwrapper .tick:nth-child(25n) line{
+    display: block;
+} */
 </style>
 <body>
 	
@@ -22,7 +32,7 @@ text{
 
 // set the dimensions and margins of the graph
 var margin = {top: 50, right: 20, bottom: 50, left: 60},
-    width = 1600 - margin.left - margin.right,
+    width = 1200 - margin.left - margin.right,
     height = 800 - margin.top - margin.bottom;
 
 // set the ranges
@@ -30,8 +40,24 @@ var x = d3.scaleBand()
           .range([0, width])
           .padding(0.3);
 var y = d3.scaleLinear()
-          .range([height, 0]);
-      
+         .range([height, 0]);
+var siFormat = function(d){
+      if(d=='0')
+        return '<1';
+        if(d%25 ==0)
+            return d;
+            else "";
+  }      
+function make_x_gridlines() {		
+    return d3.axisBottom(x)
+        .ticks(5).tickSize(0).tickFormat(siFormat).tickSizeOuter(0);
+}
+
+// gridlines in y axis function
+function make_y_gridlines() {		
+    return d3.axisLeft(y)
+        .ticks(3)
+}      
 // append the svg object to the body of the page
 // append a 'group' element to 'svg'
 // moves the 'group' element to the top left margin
@@ -43,8 +69,7 @@ var svg = d3.select("body").append("svg")
           "translate(" + margin.left + "," + margin.top + ")");
 
 // get the data
-// d3.csv("sales.csv", function(error, data) {
-    // console.log(data);
+// d3.csv("sales.csv", function(error, data) {    
 d3.json("twocities.json", function(error, data) {
     var data = changeDataFormat(data['data']['Gravenbrakel']);
   if (error) throw error;    
@@ -57,6 +82,31 @@ d3.json("twocities.json", function(error, data) {
   x.domain(data.map(function(d) { return d.age; }));
   y.domain([0, d3.max(data, function(d) { return d.total; })]);
 
+  // add the x Axis
+  svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x).tickSize(0).tickFormat(siFormat).tickSizeOuter(0));
+
+  // add the y Axis
+  svg.append("g")
+      .call(d3.axisLeft(y).ticks(3).tickSizeOuter(0));
+
+  svg.append("g")			
+      .attr("class", "grid xgridwrapper")
+      .attr("transform", "translate(0," + height + ")")
+      .call(make_x_gridlines()
+          .tickSize(-height)
+          .tickFormat('')
+      )
+
+  // add the Y gridlines
+  svg.append("g")			
+      .attr("class", "grid")
+      .call(make_y_gridlines()
+          .tickSize(-width)
+          .tickFormat("")
+      )
+
   // append the rectangles for the bar chart
   svg.selectAll(".bar")
       .data(data)
@@ -66,23 +116,7 @@ d3.json("twocities.json", function(error, data) {
       .attr("width", x.bandwidth())
       .attr("y", function(d) { return y(d.total); })
       .attr("height", function(d) { return height - y(d.total); });
-
-  var siFormat = function(d){
-      if(d=='0')
-        return '<1';
-        if(d%25 ==0)
-            return d;
-            else "";
-  }
-  // add the x Axis
-  svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x).tickFormat(siFormat));
-
-  // add the y Axis
-  svg.append("g")
-      .call(d3.axisLeft(y));
-
+  
 // custom invert function
 x.invert = (function() {
     var domain = x.domain()
@@ -98,20 +132,17 @@ var drag = d3.drag()
            .on('drag', function(d){
              // move circle
              var dx = d3.event.dx;
-             var dy = d3.event.dy;
+             var dy = d3.event.dy;             
              var x1New = parseFloat(d3.select(this).attr('x1'))+ dx;
              var y1New = parseFloat(d3.select(this).attr('y1'))+ dy;
              var x2New = parseFloat(d3.select(this).attr('x2'))+ dx;
              var y2New = parseFloat(d3.select(this).attr('y2'))+ dy;
-             line.attr("x1",x1New)
-                 .attr("y1",-20)
-                 .attr("x2",x2New)
-                 .attr("y2",height);
+             if((x1New >= 0)&&(x1New<width)){
+                line.attr("x1",x1New).attr("x2",x2New);                
                 var xy = d3.mouse(this)[0];
-                var x0 = x.invert(xy);
-                                
-                d3.selectAll('.bar').attr('class',function(){
-                    if(d3.select(this).attr('x') > x(x0)){
+                var x0 = x.invert(xy);                                                
+                d3.selectAll('.bar').attr('class',function(){                                        
+                    if(d3.select(this).attr('x') >= x1New){
                         return 'positivebar bar';
                     }else{
                         return 'negativebar bar';
@@ -119,14 +150,15 @@ var drag = d3.drag()
                 })   
                 var uC = 0;
                 var dC = 0;
-                data.forEach(function(d){
-                    if(d.age < x0){
+                data.forEach(function(d){                      
+                    if(d.age <= parseInt(x0)){                        
                         uC += d.total;
-                    }else{
-                        dC +=d.total;
+                    }else{                        
+                        dC += d.total;
                     }
                 })             
 
+                if(x0==0){x0 = 1;}
                 var tmp_uc_txt = uC + ' people ' + ' younger than ' + x0;
                 var tmp_dc_txt = dC + ' people ' + ' older than ' + x0;
                 d3.select('#utext').attr('x',function(){
@@ -139,7 +171,7 @@ var drag = d3.drag()
                     return (height/2);
                 }).text(tmp_uc_txt).call(wrap,50);
                 d3.select('#dtext').attr('x',x1New + 10).text(tmp_dc_txt).call(wrap,50);
-                
+             }                
              }).on('end', function(){
            }); 
 
@@ -147,9 +179,9 @@ var line = svg.append("line")
               .attr("x1",x(0))
               .attr("y1",- 20)
               .attr("x2",x(0))
-              .attr("y2",height)
-              .attr("stroke-width",5)
-              .attr("stroke","black")
+              .attr("y2",height+50)
+              .attr("stroke-width",3)
+              .attr("stroke","steelblue")
               .call(drag);
 var utext = svg.append("text")
     .attr("x", 0)
